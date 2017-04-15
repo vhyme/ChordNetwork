@@ -33,6 +33,7 @@ class ClientNode:
 
         print(self, 'Instantiated')
         self.start_daemon()
+        sleep(0.1)
 
     def __str__(self):
         return '[' + str(self.id) + ': '\
@@ -67,12 +68,15 @@ class ClientNode:
     # 查找某个 id 对应的节点或其后继
     def find_handler_for_id(self, _id):
         if self.should_handle_resource(_id):
+            print('self')
             return self
 
         if self.successor.should_handle_resource(_id):
+            print('succ')
             return self.successor
 
         for node in reversed(self.finger):
+            print(node)
             if is_clockwise(self.id, node.id, _id):
                 return node.find_handler_for_id(_id)
 
@@ -139,15 +143,11 @@ class ClientNode:
 
     # 更新幂次查询表
     def update_finger(self):
-        next_node = self.successor
         self.finger = []
         while len(self.finger) < Config.id_length:
             offset_to_find = 2 ** len(self.finger)
             id_to_find = (self.id + offset_to_find) % Config.capacity
-            if next_node == next_node.successor or is_clockwise(self.id, id_to_find, next_node.id):
-                self.finger.append(next_node)
-            else:
-                next_node = next_node.successor
+            self.finger.append(self.find_handler_for_id(id_to_find))
 
     # 启动异步监控线程
     def start_daemon(self):
