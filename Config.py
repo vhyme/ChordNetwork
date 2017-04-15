@@ -1,3 +1,5 @@
+from hashlib import md5
+
 id_length = 6
 cache_length = 6
 capacity = 2 ** id_length  # 此行不可修改
@@ -5,11 +7,10 @@ refresh_rate = 0.6
 
 
 def my_hash(string):
+    string = str(md5(string.encode('utf-8')))
     result = 0
-    coef = 1
     for char in string:
-        result += ord(char) * coef
-        coef = (coef + 1) % len(string)
+        result += ord(char)
     return result
 
 
