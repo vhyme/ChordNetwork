@@ -7,6 +7,12 @@ import Config
 current_nodes = []
 
 
+def simulate_async_daemon():
+    for k in current_nodes:
+        for node in current_nodes:
+            node.stabilize()
+
+
 def draw_graph():
     draw(current_nodes)
 
@@ -23,10 +29,10 @@ def is_clockwise(id1, id2, id3):
 
 
 class ClientNode:
-
     # 初始化节点并开始运行
-    def __init__(self, address=''):
+    def __init__(self, address='', async=False):
         self.id = 0
+        self.async = async
         if address != '':
             self.id = Config.address_to_id(address)
         self.address = address
@@ -40,8 +46,9 @@ class ClientNode:
         current_nodes.append(self)
 
         print(self, 'Instantiated')
-        self.start_daemon()
-        sleep(Config.refresh_rate)
+        if self.async:
+            self.start_daemon()
+            sleep(Config.refresh_rate)
 
     def __str__(self):
         return self.address + '(' + str(self.id) + ')'
@@ -109,6 +116,8 @@ class ClientNode:
     def join_network_via_director(self, director):
         print(self, 'Called join_network_via_director', director)
 
+        if self.async:
+            sleep(Config.refresh_rate)
         handler = director.find_handler_for_id(self.id)
         first_id = self.id
         while handler.id == self.id:
@@ -121,8 +130,7 @@ class ClientNode:
         self.successor = handler
         if handler.successor == handler:
             handler.successor = self
-        self.update_finger()
-        draw_graph()
+        # draw_graph()
 
     # 前驱的 getter
     @property
@@ -134,7 +142,6 @@ class ClientNode:
     def predecessor(self, value):
         print(self, 'Updating predecessor to', value)
         self._predecessor = value
-        self.update_finger()
 
     # 后继的 getter
     @property
@@ -150,16 +157,17 @@ class ClientNode:
             self.successors = [self.successor] + self.successor.successors[:Config.cache_length]
         else:
             self.successors = []
-        self.update_finger()
 
     # 更新幂次查询表
     def update_finger(self):
-        print(self, 'Updating Finger')
-        self.finger = []
+        next_finger = self.successor
+        step = 1
+        self.finger = [next_finger]
         while len(self.finger) < Config.id_length:
-            offset_to_find = 2 ** len(self.finger)
-            id_to_find = (self.id + offset_to_find) % Config.capacity
-            self.finger.append(self.successor.find_handler_for_id(id_to_find))
+            for k in range(0, step):
+                next_finger = next_finger.successor
+            self.finger.append(next_finger)
+            step *= 2
 
     # 启动异步监控线程
     def start_daemon(self):
@@ -182,7 +190,6 @@ class ClientNode:
 
     # 定期执行的稳定化调整
     def stabilize(self):
-        print(self, 'Running stabilization')
 
         # 检查并修复后继在线状态
         if self.successor != self and not self.successor.partially_online:
@@ -190,38 +197,32 @@ class ClientNode:
                 if node.partially_online:
                     self.successor = node
                     break
-            # else:
-            #     print('-', 'Node is partially offline, cleaning...')
-            #     # 注意这里是 Python for ... else 语法,表示若没有触发 break ,则执行
-            #     # 没有触发 break 则表示缓存的后继列表中所有节点均已失效
-            #     self.hot_offline()
+                    # else:
+                    #     print('-', 'Node is partially offline, cleaning...')
+                    #     # 注意这里是 Python for ... else 语法,表示若没有触发 break ,则执行
+                    #     # 没有触发 break 则表示缓存的后继列表中所有节点均已失效
+                    #     self.hot_offline()
 
         # 检查后继的前驱是否为新后继
         if is_clockwise(self.id, self.successor.predecessor.id, self.successor.id):
             print('-', 'Found new successor:', self.successor.predecessor)
             self.successor = self.successor.predecessor
 
-        # 标记是否发现了新前驱
-        has_new_node = False
+        self.update_finger()
 
         # 检查并处理其他节点发来的消息
         while self.message_queue.qsize() > 0:
-            notifier, new_node = self.message_queue.get()
+            notifier = self.message_queue.get()
             if self.predecessor == self or is_clockwise(self.predecessor.id, notifier.id, self.id):
                 print('-', 'Found new predecessor:', notifier)
                 self.predecessor = notifier
 
-                # 发现新前驱时,进行标记,以便通过消息向后传递
-                has_new_node = True
-                self.update_finger()
-            if new_node:
                 self.update_finger()
             self.message_queue.task_done()
 
         # 让后继检查自己是否为新前驱
         if self.successor != self:
-            print('-', 'Sending message to successor:', self.successor)
-            self.successor.message_queue.put((self, has_new_node))
+            self.successor.message_queue.put(self)
 
     # 热下线,即模拟正常下线情况
     def hot_offline(self):
@@ -232,7 +233,7 @@ class ClientNode:
         self.predecessor = self
         self.finger = []
         self.successors = []
-        self.message_queue = []
+        self.message_queue = Queue()
 
     # 冷下线,即模拟网络断开等强制下线情况
     def cold_offline(self):
@@ -241,4 +242,4 @@ class ClientNode:
         self.predecessor = self
         self.finger = []
         self.successors = []
-        self.message_queue = []
+        self.message_queue = Queue()
