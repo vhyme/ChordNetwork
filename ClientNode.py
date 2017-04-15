@@ -159,7 +159,7 @@ class ClientNode:
         while len(self.finger) < Config.id_length:
             offset_to_find = 2 ** len(self.finger)
             id_to_find = (self.id + offset_to_find) % Config.capacity
-            self.finger.append(self.find_handler_for_id(id_to_find))
+            self.finger.append(self.successor.find_handler_for_id(id_to_find))
 
     # 启动异步监控线程
     def start_daemon(self):
