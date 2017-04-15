@@ -6,8 +6,10 @@ refresh_rate = 0.6
 
 def my_hash(string):
     result = 0
+    coef = 1
     for char in string:
-        result += ord(char)
+        result += ord(char) * coef
+        coef = (coef + 1) % len(string)
     return result
 
 
