@@ -1,7 +1,14 @@
 from time import sleep
 from queue import Queue
 import threading
+from Draw import draw
 import Config
+
+current_nodes = []
+
+
+def draw_graph():
+    draw(current_nodes)
 
 
 def is_clockwise(id1, id2, id3):
@@ -30,16 +37,17 @@ class ClientNode:
         self.successors = []
         self.message_queue = Queue()
         self.daemon_started = False
+        current_nodes.append(self)
 
         print(self, 'Instantiated')
         self.start_daemon()
-        sleep(0.1)
+        sleep(Config.refresh_rate)
 
     def __str__(self):
-        return '[' + str(self.id) + ': '\
-               + self.predecessor.address + ' -> [' \
-               + self.address + '] -> ' \
-               + self.successor.address + ']'
+        return self.address + '(' + str(self.id) + ')'
+
+    def __repr__(self):
+        return self.address
 
     def get_resource_local(self, key):
         try:
@@ -68,17 +76,17 @@ class ClientNode:
     # 查找某个 id 对应的节点或其后继
     def find_handler_for_id(self, _id):
         if self.should_handle_resource(_id):
-            print('self')
             return self
 
         if self.successor.should_handle_resource(_id):
-            print('succ')
             return self.successor
 
         for node in reversed(self.finger):
-            print(node)
             if is_clockwise(self.id, node.id, _id):
                 return node.find_handler_for_id(_id)
+
+        print(self, 'error', self.finger)
+        exit(0)
 
     # 从网络中读取资源,返回一个元组表示存放的节点 id 和资源内容
     def get_resource(self, key):
@@ -99,7 +107,7 @@ class ClientNode:
 
     # 加入某个节点所在的网络
     def join_network_via_director(self, director):
-        print(self, 'Called join_network_with_director', director)
+        print(self, 'Called join_network_via_director', director)
 
         handler = director.find_handler_for_id(self.id)
         first_id = self.id
@@ -114,6 +122,7 @@ class ClientNode:
         if handler.successor == handler:
             handler.successor = self
         self.update_finger()
+        draw_graph()
 
     # 前驱的 getter
     @property
@@ -125,6 +134,7 @@ class ClientNode:
     def predecessor(self, value):
         print(self, 'Updating predecessor to', value)
         self._predecessor = value
+        self.update_finger()
 
     # 后继的 getter
     @property
@@ -140,9 +150,11 @@ class ClientNode:
             self.successors = [self.successor] + self.successor.successors[:Config.cache_length]
         else:
             self.successors = []
+        self.update_finger()
 
     # 更新幂次查询表
     def update_finger(self):
+        print(self, 'Updating Finger')
         self.finger = []
         while len(self.finger) < Config.id_length:
             offset_to_find = 2 ** len(self.finger)
@@ -189,18 +201,27 @@ class ClientNode:
             print('-', 'Found new successor:', self.successor.predecessor)
             self.successor = self.successor.predecessor
 
+        # 标记是否发现了新前驱
+        has_new_node = False
+
         # 检查并处理其他节点发来的消息
         while self.message_queue.qsize() > 0:
-            notifier = self.message_queue.get()
+            notifier, new_node = self.message_queue.get()
             if self.predecessor == self or is_clockwise(self.predecessor.id, notifier.id, self.id):
                 print('-', 'Found new predecessor:', notifier)
                 self.predecessor = notifier
+
+                # 发现新前驱时,进行标记,以便通过消息向后传递
+                has_new_node = True
+                self.update_finger()
+            if new_node:
+                self.update_finger()
             self.message_queue.task_done()
 
         # 让后继检查自己是否为新前驱
         if self.successor != self:
             print('-', 'Sending message to successor:', self.successor)
-            self.successor.message_queue.put(self)
+            self.successor.message_queue.put((self, has_new_node))
 
     # 热下线,即模拟正常下线情况
     def hot_offline(self):
