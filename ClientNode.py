@@ -8,7 +8,7 @@ current_nodes = []
 
 
 def simulate_async_daemon():
-    for k in range(0, len(current_nodes) // 2 + 1):
+    for k in range(0, len(current_nodes)):
         for node in current_nodes:
             node.stabilize()
 

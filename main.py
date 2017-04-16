@@ -17,9 +17,10 @@ for i in range(1, Config.capacity + 1):
         simulate_async_daemon()
         draw_graph()
 
-print('Saved at', N0.put_resource('Hello.txt2', 'Hello, World'))
-print('Saved at', N0.put_resource('Hello2.md', '# This is a Markdown'))
-print(N0.get_resource('Hello2.md'))
-print(N0.get_resource('Hello.jpg'))
+print('Saved at', N0.put_resource('Hello.txt', 'Hello, World'))
+print('Saved at', N0.put_resource('Hello.md', '# This is a Markdown'))
+print(N0.get_resource('Hello.md'))
+print(N0.get_resource('Hello.jpeg'))
+print(N0.get_resource('Hello.txt'))
 
 draw_graph()

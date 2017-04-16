@@ -1,14 +1,14 @@
 from hashlib import md5
 
-id_length = 6
+id_length = 4
 cache_length = id_length
 capacity = 2 ** id_length  # 此行不可修改
 refresh_rate = 0.6
-verbose = True
+verbose = False
 
 
 def my_hash(string):
-    string = str(md5(string.encode('utf-8')))
+    string = md5(string.encode('utf-8')).hexdigest()
     result = 0
     for char in string:
         result += ord(char)
