@@ -1,6 +1,5 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-import os
 import math
 
 pic_count = 0
@@ -8,6 +7,7 @@ pic_count = 0
 
 def draw(nodes):
     plt.figure(figsize=(7, 7))
+    plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
     G = nx.DiGraph()
     nodes = list(filter(lambda x: x.partially_online, nodes))
     length = len(nodes)
@@ -31,7 +31,6 @@ def draw(nodes):
             G.add_edge(node.predecessor, node)
 
     plt.axis('off')
-    plt.set_cmap('hot')
     nx.draw_networkx(G, nx.get_node_attributes(G, 'pos'), node_color='orange', edge_color='orange', node_size=40, with_labels=False)
     nx.draw_networkx_labels(G, nx.get_node_attributes(G, 'lblpos'), font_size=12 - length / 15)
     plt.xlim(-1.8, 1.8)

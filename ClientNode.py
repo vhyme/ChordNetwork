@@ -43,6 +43,7 @@ class ClientNode:
         self.successors = []
         self.message_queue = Queue()
         self.daemon_started = False
+        self.io_lock = False
         current_nodes.append(self)
 
         if Config.verbose:
@@ -59,9 +60,17 @@ class ClientNode:
 
     def get_resource_local(self, key):
         try:
-            return self.resources[key]
+            return {
+                'physical_holder': str(self),
+                'data': self.resources[key]
+            }
         except:
-            return None
+            if self.io_lock:
+                return None
+            self.io_lock = True
+            resource = self.predecessor.get_resource_local(key)
+            self.io_lock = False
+            return resource
 
     # 判断是否在线
     @property
@@ -99,21 +108,22 @@ class ClientNode:
     # 从网络中读取资源,返回一个元组表示存放的节点 id 和资源内容
     def get_resource(self, key):
         key_id = Config.key_to_id(key)
-
-        if Config.verbose:
-            print(self, 'Called get_resource for', key, '(' + str(key_id) + ')')
         handler = self.find_handler_for_id(key_id)
-        return str(handler), handler.get_resource_local(key)
+        return 'GET', {
+            'key': key,
+            'logical_holder': str(handler),
+            'result': handler.get_resource_local(key)
+        }
 
     # 向网络中添加资源,返回存放的节点 id
     def put_resource(self, key, value):
         key_id = Config.key_to_id(key)
-
-        if Config.verbose:
-            print(self, 'Called put_resource for', key, '(' + str(key_id) + ')')
         handler = self.find_handler_for_id(key_id)
         handler.resources[key] = value
-        return str(handler)
+        return 'PUT', {
+            'key': key,
+            'holder': str(handler)
+        }
 
     # 加入某个节点所在的网络
     def join_network_via_director(self, director):
