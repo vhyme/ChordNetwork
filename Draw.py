@@ -9,7 +9,8 @@ pic_count = 0
 def draw(nodes):
     plt.figure(figsize=(7, 7))
     G = nx.DiGraph()
-    length = len(list(filter(lambda x: x.partially_online, nodes)))
+    nodes = list(filter(lambda x: x.partially_online, nodes))
+    length = len(nodes)
     if length < 1:
         length = 1
     index = 0
@@ -24,8 +25,10 @@ def draw(nodes):
         G.add_node(node, pos=(x, y), lblpos=(x*1.25, y*1.15))
         index += 1
     for node in nodes:
-        G.add_edge(node, node.successor)
-        G.add_edge(node.predecessor, node)
+        if node != node.successor and node.successor.partially_online:
+            G.add_edge(node, node.successor)
+        if node != node.predecessor and node.predecessor.partially_online:
+            G.add_edge(node.predecessor, node)
 
     plt.axis('off')
     plt.set_cmap('hot')

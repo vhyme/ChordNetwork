@@ -8,7 +8,7 @@ current_nodes = []
 
 
 def simulate_async_daemon():
-    for k in current_nodes:
+    for k in range(0, len(current_nodes) // 2 + 1):
         for node in current_nodes:
             node.stabilize()
 
@@ -93,8 +93,7 @@ class ClientNode:
             if is_clockwise(self.id, node.id, _id):
                 return node.find_handler_for_id(_id)
 
-        if Config.verbose:
-            print(self, 'error', self.finger)
+        print(self, 'Error', self.finger)
         exit(0)
 
     # 从网络中读取资源,返回一个元组表示存放的节点 id 和资源内容
@@ -196,45 +195,44 @@ class ClientNode:
 
     # 定期执行的稳定化调整
     def stabilize(self):
+
+        # 检查并修复后继在线状态
         if self.successor != self:
+            if self.successor.partially_online:
+                # 检查后继的前驱是否为新后继
+                if is_clockwise(self.id, self.successor.predecessor.id, self.successor.id)\
+                        and self.successor.predecessor.partially_online:
+                    if Config.verbose:
+                        print('-', 'Found new successor:', self.successor.predecessor)
+                    self.successor = self.successor.predecessor
+                self.successor.message_queue.put(self)
+
+            # 检查并修复后继在线状态
+            else:
+                for node in self.successors:
+                    if node.partially_online:
+                        self.successor = node
+                        break
+
             self.successors = [self.successor] + self.successor.successors[:Config.cache_length]
         else:
             self.successors = []
-
-        # 检查并修复后继在线状态
-        if self.successor != self and not self.successor.partially_online:
-            for node in self.successors:
-                if node.partially_online:
-                    self.successor = node
-                    break
-                    # else:
-                    #     print('-', 'Node is partially offline, cleaning...')
-                    #     # 注意这里是 Python for ... else 语法,表示若没有触发 break ,则执行
-                    #     # 没有触发 break 则表示缓存的后继列表中所有节点均已失效
-                    #     self.hot_offline()
-
-        # 检查后继的前驱是否为新后继
-        if is_clockwise(self.id, self.successor.predecessor.id, self.successor.id):
-            if Config.verbose:
-                print('-', 'Found new successor:', self.successor.predecessor)
-            self.successor = self.successor.predecessor
 
         self.update_finger()
 
         # 检查并处理其他节点发来的消息
         while self.message_queue.qsize() > 0:
             notifier = self.message_queue.get()
-            if self.predecessor == self or is_clockwise(self.predecessor.id, notifier.id, self.id):
+            if (self.predecessor == self
+                or not self.predecessor.partially_online
+                or is_clockwise(self.predecessor.id, notifier.id, self.id))\
+                    and notifier.partially_online:
                 if Config.verbose:
                     print('-', 'Found new predecessor:', notifier)
                 self.predecessor = notifier
 
                 self.update_finger()
             self.message_queue.task_done()
-
-        # 让后继检查自己是否为新前驱
-        if self.successor != self:
-            self.successor.message_queue.put(self)
 
     # 热下线,即模拟正常下线情况
     def hot_offline(self):
