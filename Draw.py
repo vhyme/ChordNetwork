@@ -10,7 +10,7 @@ def draw(nodes):
     plt.figure(figsize=(7, 7))
     G = nx.DiGraph()
     length = len(list(filter(lambda x: x.partially_online, nodes)))
-    if length == 0:
+    if length < 1:
         length = 1
     index = 0
     nodes = sorted(nodes, key=lambda x: x.id)
@@ -19,8 +19,8 @@ def draw(nodes):
         x = math.cos(angle)
         y = math.sin(angle)
         if not node.fully_online:
-            x *= 1.3
-            y *= 1.3
+            x = math.cos(angle) * 1.3
+            y = math.sin(angle) * 1.3
         G.add_node(node, pos=(x, y), lblpos=(x*1.25, y*1.15))
         index += 1
     for node in nodes:

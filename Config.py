@@ -4,6 +4,7 @@ id_length = 6
 cache_length = 6
 capacity = 2 ** id_length  # 此行不可修改
 refresh_rate = 0.6
+verbose = True
 
 
 def my_hash(string):

@@ -45,7 +45,8 @@ class ClientNode:
         self.daemon_started = False
         current_nodes.append(self)
 
-        print(self, 'Instantiated')
+        if Config.verbose:
+            print(self, 'Instantiated')
         if self.async:
             self.start_daemon()
             sleep(Config.refresh_rate)
@@ -92,14 +93,16 @@ class ClientNode:
             if is_clockwise(self.id, node.id, _id):
                 return node.find_handler_for_id(_id)
 
-        print(self, 'error', self.finger)
+        if Config.verbose:
+            print(self, 'error', self.finger)
         exit(0)
 
     # 从网络中读取资源,返回一个元组表示存放的节点 id 和资源内容
     def get_resource(self, key):
         key_id = Config.key_to_id(key)
 
-        print(self, 'Called get_resource for', key, '(' + str(key_id) + ')')
+        if Config.verbose:
+            print(self, 'Called get_resource for', key, '(' + str(key_id) + ')')
         handler = self.find_handler_for_id(key_id)
         return str(handler), handler.get_resource_local(key)
 
@@ -107,14 +110,16 @@ class ClientNode:
     def put_resource(self, key, value):
         key_id = Config.key_to_id(key)
 
-        print(self, 'Called put_resource for', key, '(' + str(key_id) + ')')
+        if Config.verbose:
+            print(self, 'Called put_resource for', key, '(' + str(key_id) + ')')
         handler = self.find_handler_for_id(key_id)
         handler.resources[key] = value
         return str(handler)
 
     # 加入某个节点所在的网络
     def join_network_via_director(self, director):
-        print(self, 'Called join_network_via_director', director)
+        if Config.verbose:
+            print(self, 'Called join_network_via_director', director)
 
         if self.async:
             sleep(Config.refresh_rate)
@@ -123,7 +128,8 @@ class ClientNode:
         while handler.id == self.id:
             self.id = (self.id - 1) % Config.capacity
             if first_id == self.id:
-                print(self, 'Failed to join network: Network', director, 'is full')
+                if Config.verbose:
+                    print(self, 'Failed to join network: Network', director, 'is full')
                 return
             handler = director.find_handler_for_id(self.id)
 
@@ -140,7 +146,8 @@ class ClientNode:
     # 每当前驱改变时,输出日志
     @predecessor.setter
     def predecessor(self, value):
-        print(self, 'Updating predecessor to', value)
+        if Config.verbose:
+            print(self, 'Updating predecessor to', value)
         self._predecessor = value
 
     # 后继的 getter
@@ -151,12 +158,9 @@ class ClientNode:
     # 每当后继改变时,更新后继缓存表
     @successor.setter
     def successor(self, value):
-        print(self, 'Updating successor to', value)
+        if Config.verbose:
+            print(self, 'Updating successor to', value)
         self._successor = value
-        if value != self:
-            self.successors = [self.successor] + self.successor.successors[:Config.cache_length]
-        else:
-            self.successors = []
 
     # 更新幂次查询表
     def update_finger(self):
@@ -173,10 +177,12 @@ class ClientNode:
     def start_daemon(self):
         def daemon():
             while self.daemon_started:
-                print(self, 'Daemon Running')
+                if Config.verbose:
+                    print(self, 'Daemon Running')
                 self.stabilize()
-                print(self, 'Daemon Sleeping')
-                print('')
+                if Config.verbose:
+                    print(self, 'Daemon Sleeping')
+                    print('')
                 sleep(Config.refresh_rate)
 
         self.daemon_started = True
@@ -190,6 +196,10 @@ class ClientNode:
 
     # 定期执行的稳定化调整
     def stabilize(self):
+        if self.successor != self:
+            self.successors = [self.successor] + self.successor.successors[:Config.cache_length]
+        else:
+            self.successors = []
 
         # 检查并修复后继在线状态
         if self.successor != self and not self.successor.partially_online:
@@ -205,7 +215,8 @@ class ClientNode:
 
         # 检查后继的前驱是否为新后继
         if is_clockwise(self.id, self.successor.predecessor.id, self.successor.id):
-            print('-', 'Found new successor:', self.successor.predecessor)
+            if Config.verbose:
+                print('-', 'Found new successor:', self.successor.predecessor)
             self.successor = self.successor.predecessor
 
         self.update_finger()
@@ -214,7 +225,8 @@ class ClientNode:
         while self.message_queue.qsize() > 0:
             notifier = self.message_queue.get()
             if self.predecessor == self or is_clockwise(self.predecessor.id, notifier.id, self.id):
-                print('-', 'Found new predecessor:', notifier)
+                if Config.verbose:
+                    print('-', 'Found new predecessor:', notifier)
                 self.predecessor = notifier
 
                 self.update_finger()
@@ -226,7 +238,8 @@ class ClientNode:
 
     # 热下线,即模拟正常下线情况
     def hot_offline(self):
-        print(self, 'Node is offline')
+        if Config.verbose:
+            print(self, 'Node is offline')
         self.successor.predecessor = self.predecessor
         self.predecessor.successor = self.successor
         self.successor = self
@@ -237,7 +250,8 @@ class ClientNode:
 
     # 冷下线,即模拟网络断开等强制下线情况
     def cold_offline(self):
-        print(self, 'Node is forced offline')
+        if Config.verbose:
+            print(self, 'Node is forced offline')
         self.successor = self
         self.predecessor = self
         self.finger = []
