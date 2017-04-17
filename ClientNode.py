@@ -7,10 +7,13 @@ import Config
 current_nodes = []
 
 
-def simulate_async_daemon():
-    for k in range(0, len(current_nodes)):
-        for node in current_nodes:
-            node.stabilize()
+def thread_wait():
+    if Config.multithread:
+        sleep(Config.refresh_rate)
+    else:
+        for k in range(0, len(current_nodes)):
+            for node in current_nodes:
+                node.stabilize()
 
 
 def draw_graph():
@@ -30,9 +33,9 @@ def is_clockwise(id1, id2, id3):
 
 class ClientNode:
     # 初始化节点并开始运行
-    def __init__(self, address='', async=False):
+    def __init__(self, address=''):
         self.id = 0
-        self.async = async
+        self.async = Config.multithread
         if address != '':
             self.id = Config.address_to_id(address)
         self.address = address

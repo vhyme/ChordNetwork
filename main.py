@@ -1,5 +1,5 @@
 import Config
-from ClientNode import ClientNode, draw_graph, simulate_async_daemon
+from ClientNode import ClientNode, draw_graph, thread_wait
 
 N0 = ClientNode('N0')
 for i in range(1, Config.capacity + 1):
@@ -8,14 +8,14 @@ for i in range(1, Config.capacity + 1):
     print(N0.put_resource('Hello' + str(i) + '.ini', '[HELLO]\nindex=' + str(i)))
 
     draw_graph()
-    simulate_async_daemon()
+    thread_wait()
     draw_graph()
 
     # 模拟某些节点掉线
     if i % 5 == 0:
         Ni.cold_offline()
         draw_graph()
-        simulate_async_daemon()
+        thread_wait()
         draw_graph()
 
 print(N0.put_resource('Hello.txt', 'Hello, World'))
