@@ -68,7 +68,7 @@ class ClientNode:
             if self.io_lock:
                 return None
             self.io_lock = True
-            resource = self.predecessor.get_resource_local(key)
+            resource = self.successor.get_resource_local(key)
             self.io_lock = False
             return resource
 

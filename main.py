@@ -7,16 +7,16 @@ for i in range(1, Config.capacity + 1):
     Ni.join_network_via_director(N0)
     print(N0.put_resource('Hello' + str(i) + '.ini', '[HELLO]\nindex=' + str(i)))
 
-    # draw_graph()
+    draw_graph()
     simulate_async_daemon()
-    # draw_graph()
+    draw_graph()
 
     # 模拟某些节点掉线
     if i % 5 == 0:
         Ni.cold_offline()
-        # draw_graph()
+        draw_graph()
         simulate_async_daemon()
-        # draw_graph()
+        draw_graph()
 
 print(N0.put_resource('Hello.txt', 'Hello, World'))
 print(N0.put_resource('Hello.md', '# This is a Markdown'))
